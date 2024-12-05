@@ -1,0 +1,326 @@
+openapi: 3.0.3
+info:
+  title: ParkHere API
+  description: API для работы с приложением поиска парковочных мест
+  version: 1.0.0
+servers:
+  - url: https://api.parkhere.com
+tags:
+  - name: Parking
+    description: Взаимодействие с парковочными местами
+  - name: Sessions
+    description: Управление сессиями парковки
+  - name: Favorites
+    description: Взаимодействие с избранными парковками
+  - name: Geocoding
+    description: Геокодинг адресов
+security:
+  - BearerAuth: []
+paths:
+  /api/v1/parking:
+    get:
+      summary: Получение списка парковочных мест
+      description: >-
+        Возвращает список парковочных мест. Радиус поиска зависит  от уровня
+        подписки пользователя
+      tags:
+        - Parking
+      parameters:
+        - $ref: '#/components/parameters/Lat'
+        - $ref: '#/components/parameters/Lon'
+        - in: query
+          name: radius
+          schema:
+            type: integer
+            enum:
+              - 150
+              - 1000
+          required: true
+          description: >-
+            Радиус поиска в метрах. Максимальное значение  определяется
+            подпиской
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ParkingSpot'
+        '401':
+          description: Пользователь не авторизован
+        '403':
+          description: Попытка задать радиус превышает ограничения уровня подписки
+        '404':
+          description: Парковочные места не найдены
+  /api/v1/parking/{parkingId}:
+    get:
+      summary: Получение информации о парковке
+      description: Возвращает детальную информацию о парковке
+      tags:
+        - Parking
+      parameters:
+        - $ref: '#/components/parameters/ParkingId'
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ParkingSpot'
+        '401':
+          description: Пользователь не авторизован
+        '404':
+          description: Парковочное место с указанным идентификатором не найдено
+  /api/v1/sessions:
+    get:
+      tags:
+        - Sessions
+      summary: Получение сессий парковок
+      description: >-
+        Возвращает информацию о последних сессиях парковок пользователя для
+        отображения истории
+      parameters:
+        - name: type
+          in: query
+          required: true
+          description: Тип сессий
+          schema:
+            type: string
+            enum:
+              - active
+              - completed
+        - name: amount
+          in: query
+          description: Количество сессий
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Session'
+        '401':
+          description: Пользователь не авторизован
+        '404':
+          description: Сессии не найдена
+  /api/v1/sessions/{sessionId}:
+    post:
+      summary: Изменить состояние парковочного сессии
+      description: Позволяет обновить состояние парковочной сессии
+      tags:
+        - Sessions
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          description: Уникальный идентификатор сессии парковки
+          schema:
+            type: string
+      requestBody:
+        description: Данные для изменения состояния
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                newState:
+                  type: string
+                  description: Новое состояние сессии
+                  enum:
+                    - active
+                    - paused
+                    - completed
+      responses:
+        '200':
+          description: Состояние успешно обновлено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '401':
+          description: Пользователь не авторизован
+        '404':
+          description: Сессия с указанным идентификатором не найден
+  /api/v1/favorites:
+    get:
+      summary: Получить список избранных парковок
+      description: Возвращает список парковок, которые пользователь добавил в избранное
+      tags:
+        - Favorites
+      responses:
+        '200':
+          description: Список избранных парковок успешно получен.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ParkingSpot'
+        '401':
+          description: Пользователь не авторизован
+        '404':
+          description: Избранные парковки не найдены
+  /api/v1/favorites/{parkingId}:
+    post:
+      summary: Добавление парковки в избранное
+      description: Позволяет добавить парковку в избранное пользователя
+      tags:
+        - Favorites
+      parameters:
+        - in: path
+          name: parkingId
+          required: true
+          schema:
+            type: string
+          description: Идентификатор парковки
+      responses:
+        '201':
+          description: Парковка успешно добавлена в избранное
+        '401':
+          description: Пользователь не авторизован
+        '404':
+          description: Парковочное место с указанным идентификатором не найдено
+    delete:
+      summary: Удалить парковку из избранного
+      description: Удаляет парковку из списка избранных для авторизованного пользователя
+      tags:
+        - Favorites
+      parameters:
+        - name: parkingId
+          in: path
+          required: true
+          description: >-
+            Уникальный идентификатор парковки, которую нужно   удалить из
+            избранного
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Парковка успешно удалена из избранного
+        '401':
+          description: Пользователь не авторизован
+        '404':
+          description: Парковка не найдена в избранном
+  /api/v1/geocoding:
+    get:
+      summary: Геокодинг адреса
+      description: Преобразует текстовый адрес в координаты
+      tags:
+        - Geocoding
+      parameters:
+        - in: query
+          name: address
+          required: true
+          schema:
+            type: string
+          description: Адрес в текстовом формате
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  lat:
+                    type: number
+                  lon:
+                    type: number
+  /api/v1/regeocoding:
+    get:
+      summary: Обратный геокодинг координат
+      description: Преобразует координаты в текстовый адрес
+      tags:
+        - Geocoding
+      parameters:
+        - $ref: '#/components/parameters/Lat'
+        - $ref: '#/components/parameters/Lon'
+      responses:
+        '200':
+          description: Успешный ответ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  address:
+                    type: string
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Lat:
+      name: lat
+      in: query
+      required: true
+      schema:
+        type: number
+      description: Широта центра области поиска.
+    Lon:
+      name: lon
+      in: query
+      required: true
+      schema:
+        type: number
+      description: Долгота центра области поиска.
+    ParkingId:
+      name: parkingId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Идентификатор парковки.
+  schemas:
+    ParkingSpot:
+      type: object
+      properties:
+        parkingId:
+          type: string
+          description: Уникальный идентификатор парковки
+        lat:
+          type: number
+          description: Широта парковочного места
+        lon:
+          type: number
+          description: Долгота парковочного места
+        address:
+          type: string
+          description: Адрес парковочного места
+        price:
+          type: number
+          description: Стоимость часа парковки
+        prediction:
+          type: integer
+          description: Предсказание доступности свободного места
+    Session:
+      type: object
+      properties:
+        sessionId:
+          type: string
+          description: Уникальный идентификатор сессии
+        parkingId:
+          type: string
+          description: Уникальный идентификатор парковки
+        lat:
+          type: number
+          description: Широта парковочного места
+        lon:
+          type: number
+          description: Долгота парковочного места
+        address:
+          type: string
+          description: Адрес парковочного места
+        startTime:
+          type: string
+          format: date-time
+          description: Время начала сессии
