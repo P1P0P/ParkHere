@@ -8,6 +8,7 @@
   text-align: center;
   position: relative;
   overflow: hidden;
+  background: radial-gradient(circle, #ffa31a 90%,#1b1b1b 100%);
 }
 
 @media screen and (max-width: 996px) {

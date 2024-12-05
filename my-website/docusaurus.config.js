@@ -5,7 +5,6 @@ const simplePlantUML = require("@akebifiky/remark-simple-plantuml"); // объя
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'ParkHere', //Название сайта на начальной странице
-  tagline: 'Туториал', // Описание сайта на начальной странице
   favicon: 'img/favicon.ico', // Иконка сайта
   url: 'https://P1P0P.github.io/', // Адрес gitlab pages, обычно https://<username>.github.io
   baseUrl: 'ParkHere', // Базовый url, обычно название репозитория
